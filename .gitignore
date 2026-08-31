@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local build outputs
+.android-build-tools/
+android-driver/.gradle/
+android-driver/app/build/
+android-driver/local.properties
+
+# Large reverse-engineering bundles
+*.apks
+
+# Logs / temp
+*.log
+*.tmp

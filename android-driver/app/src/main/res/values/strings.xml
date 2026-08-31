@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Tronic Pocket Print Service</string>
+    <string name="title_main">Tronic Print Service Setup</string>
+    <string name="selected_printer">Selected printer: %1$s</string>
+    <string name="none_selected">none</string>
+    <string name="button_pick_printer">Choose paired printer</string>
+    <string name="button_clear_printer">Clear selection</string>
+    <string name="button_save_manual">Save manual MAC (experimental)</string>
+    <string name="hint_pairing">Recommended: pair "Mini Pocket Printer" first. Experimental mode: save MAC address manually (can work without pairing on some phones).</string>
+    <string name="manual_address_hint">Manual MAC, e.g. 55:55:09:10:98:B6</string>
+</resources>
