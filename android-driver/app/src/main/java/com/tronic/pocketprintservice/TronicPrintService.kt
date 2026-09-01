@@ -1,7 +1,6 @@
 package com.tronic.pocketprintservice
 
 import android.content.Context
-import android.os.CancellationSignal
 import android.print.PrintAttributes
 import android.print.PrinterCapabilitiesInfo
 import android.print.PrinterId
