@@ -80,14 +80,6 @@ private class TronicDiscoverySession(
         // No dynamic tracking for quick implementation.
     }
 
-    override fun onRequestCustomPrinterIcon(
-        printerId: PrinterId,
-        cancellationSignal: CancellationSignal,
-        callback: CustomPrinterIconCallback
-    ) {
-        // Keep default icon.
-    }
-
     override fun onDestroy() {
         // Nothing to clean up.
     }
