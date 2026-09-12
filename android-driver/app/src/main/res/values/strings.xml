@@ -23,4 +23,5 @@
     <string name="share_status_printing">Printing…</string>
     <string name="share_status_done">Done.</string>
     <string name="share_status_error">Error: %1$s</string>
+    <string name="share_error_url_only">Chrome only shared the web link, not the page.\n\nTo print a webpage:\n• Take a screenshot and share that image, or\n• Chrome menu → Print → save/share as PDF, or\n• Chrome menu → Print → choose Tronic Mini Pocket Printer (system print)</string>
 </resources>

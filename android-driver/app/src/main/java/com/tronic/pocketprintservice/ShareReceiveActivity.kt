@@ -172,26 +172,48 @@ class ShareReceiveActivity : AppCompatActivity() {
 
         when (action) {
             Intent.ACTION_SEND -> {
-                if (type.startsWith("text/") && intent.hasExtra(Intent.EXTRA_TEXT) &&
-                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM) == null
-                ) {
+                // Prefer a file/stream (screenshot, PDF) over plain text.
+                val uri = streamUri(intent)
+                if (uri != null) {
+                    return loadUri(uri, type)
+                }
+                if (type.startsWith("text/") || intent.hasExtra(Intent.EXTRA_TEXT)) {
                     val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
                     if (text.isBlank()) return emptyList()
+                    if (isWebLinkShare(text)) {
+                        throw IllegalArgumentException(getString(R.string.share_error_url_only))
+                    }
                     return listOf(TronicBluetoothPrinter.renderTextToBitmap(text))
                 }
-                val uri = streamUri(intent) ?: return emptyList()
-                return loadUri(uri, type)
+                return emptyList()
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val uris = streamUriList(intent)
+                if (uris.isEmpty()) return emptyList()
                 val out = mutableListOf<Bitmap>()
-                for (uri in uris) {
-                    out += loadUri(uri, type)
+                for (u in uris) {
+                    out += loadUri(u, type)
                 }
                 return out
             }
             else -> return emptyList()
         }
+    }
+
+    /**
+     * Chrome / browsers often "share" only the page URL (sometimes with a title line),
+     * not a screenshot or PDF — printing that yields a useless one-line strip.
+     */
+    private fun isWebLinkShare(text: String): Boolean {
+        val lines = text.replace("\r\n", "\n").lines().map { it.trim() }.filter { it.isNotEmpty() }
+        if (lines.isEmpty()) return false
+        val urlLine = lines.last()
+        val looksUrl = urlLine.startsWith("http://", ignoreCase = true) ||
+            urlLine.startsWith("https://", ignoreCase = true) ||
+            urlLine.matches(Regex("^https?://\\S+$", RegexOption.IGNORE_CASE))
+        if (!looksUrl) return false
+        // Single URL, or "Title" + URL (typical browser share).
+        return lines.size == 1 || lines.size == 2
     }
 
     private fun streamUri(intent: Intent): Uri? {

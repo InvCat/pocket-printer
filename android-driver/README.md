@@ -64,6 +64,8 @@ Workflow: `.github/workflows/build-apk.yml`
 
 Supports: `image/*`, `application/pdf`, `text/plain` (and multiple images).
 
+**Web pages (Chrome):** Share often sends only the URL. Use a **screenshot**, share a **PDF**, or system **Print** → Tronic Mini Pocket Printer — not “Share page link”.
+
 ### B) System Print dialog
 
 From any app that supports Android print:
