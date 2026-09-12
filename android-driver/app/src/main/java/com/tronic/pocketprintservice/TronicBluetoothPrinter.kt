@@ -42,6 +42,13 @@ private val CMD_FEED = byteArrayOf(0x1B, 0x4A, FEED_DOTS.toByte())
 class TronicBluetoothPrinter(private val context: Context, private val address: String) {
 
     fun printPdf(pfd: ParcelFileDescriptor) {
+        printBitmaps(renderPdfToBitmaps(pfd))
+    }
+
+    fun printBitmaps(bitmaps: List<Bitmap>) {
+        if (bitmaps.isEmpty()) {
+            throw IOException("Nothing to print.")
+        }
         ensureConnectPermission()
         val adapter = BluetoothAdapter.getDefaultAdapter()
             ?: throw IOException("Bluetooth adapter is not available.")
@@ -51,7 +58,7 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
 
         val device = adapter.getRemoteDevice(address)
         adapter.cancelDiscovery()
-        val chunks = buildPrintChunks(pfd)
+        val chunks = buildPrintChunksFromBitmaps(bitmaps)
 
         val sppErr = runCatching { sendViaSpp(device, chunks) }.exceptionOrNull()
         if (sppErr == null) {
@@ -67,6 +74,96 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
             "SPP and BLE both failed. SPP: ${sppErr.message ?: sppErr.javaClass.simpleName}; " +
                 "BLE: ${bleErr.message ?: bleErr.javaClass.simpleName}"
         )
+    }
+
+    companion object {
+        fun renderPdfToBitmaps(pfd: ParcelFileDescriptor): List<Bitmap> {
+            val pages = mutableListOf<Bitmap>()
+            PdfRenderer(pfd).use { renderer ->
+                if (renderer.pageCount == 0) {
+                    throw IOException("PDF has no pages.")
+                }
+                for (pageIndex in 0 until renderer.pageCount) {
+                    renderer.openPage(pageIndex).use { page ->
+                        pages += renderPageToWidth(page, PRINT_WIDTH)
+                    }
+                }
+            }
+            return pages
+        }
+
+        fun fitBitmapToPrintWidth(source: Bitmap): Bitmap {
+            val src = if (source.config == Bitmap.Config.ARGB_8888) {
+                source
+            } else {
+                source.copy(Bitmap.Config.ARGB_8888, false) ?: source
+            }
+            if (src.width == PRINT_WIDTH) {
+                return src
+            }
+            val targetHeight = max(1, (src.height.toFloat() / src.width.toFloat() * PRINT_WIDTH).roundToInt())
+            return Bitmap.createScaledBitmap(src, PRINT_WIDTH, targetHeight, true)
+        }
+
+        fun renderTextToBitmap(text: String, fontSizePx: Float = 28f): Bitmap {
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.BLACK
+                textSize = fontSizePx
+                typeface = android.graphics.Typeface.MONOSPACE
+            }
+            val margin = 8
+            val maxWidth = PRINT_WIDTH - 2 * margin
+            val lines = wrapText(text.replace("\r\n", "\n"), paint, maxWidth.toFloat())
+            val lineHeight = (paint.fontSpacing).roundToInt().coerceAtLeast(fontSizePx.roundToInt() + 6)
+            val height = max(lineHeight + 2 * margin, lines.size * lineHeight + 2 * margin)
+            val bitmap = Bitmap.createBitmap(PRINT_WIDTH, height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(Color.WHITE)
+            var y = margin - paint.ascent()
+            for (line in lines) {
+                canvas.drawText(line, margin.toFloat(), y, paint)
+                y += lineHeight
+            }
+            return bitmap
+        }
+
+        private fun wrapText(text: String, paint: android.graphics.Paint, maxWidth: Float): List<String> {
+            val out = mutableListOf<String>()
+            for (para in text.split("\n")) {
+                if (para.isEmpty()) {
+                    out += ""
+                    continue
+                }
+                var current = ""
+                for (word in para.split(" ")) {
+                    val trial = if (current.isEmpty()) word else "$current $word"
+                    if (paint.measureText(trial) <= maxWidth || current.isEmpty()) {
+                        current = trial
+                    } else {
+                        out += current
+                        current = word
+                    }
+                }
+                out += current
+            }
+            if (out.isEmpty()) out += ""
+            return out
+        }
+
+        private fun renderPageToWidth(page: PdfRenderer.Page, targetWidth: Int): Bitmap {
+            val srcWidth = max(1, page.width)
+            val srcHeight = max(1, page.height)
+            val targetHeight = max(1, (srcHeight.toFloat() / srcWidth.toFloat() * targetWidth).roundToInt())
+
+            val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            canvas.drawColor(Color.WHITE)
+            val matrix = Matrix().apply {
+                setScale(targetWidth.toFloat() / srcWidth.toFloat(), targetHeight.toFloat() / srcHeight.toFloat())
+            }
+            page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+            return bitmap
+        }
     }
 
     private fun ensureConnectPermission() {
@@ -99,27 +196,19 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
         return socket
     }
 
-    private fun buildPrintChunks(pfd: ParcelFileDescriptor): List<ByteArray> {
+    private fun buildPrintChunksFromBitmaps(bitmaps: List<Bitmap>): List<ByteArray> {
         val chunks = mutableListOf<ByteArray>()
         chunks += CMD_ENABLE
         chunks += CMD_WAKEUP
-
-        PdfRenderer(pfd).use { renderer ->
-            if (renderer.pageCount == 0) {
-                throw IOException("PDF has no pages.")
-            }
-
-            for (pageIndex in 0 until renderer.pageCount) {
-                renderer.openPage(pageIndex).use { page ->
-                    val bitmap = renderPageToWidth(page, PRINT_WIDTH)
-                    val raster = bitmapToRaster(bitmap)
-                    chunks += rasterBlockChunks(raster, bitmap.height)
-                    chunks += CMD_FEED
-                    bitmap.recycle()
-                }
+        for (raw in bitmaps) {
+            val bitmap = fitBitmapToPrintWidth(raw)
+            val raster = bitmapToRaster(bitmap)
+            chunks += rasterBlockChunks(raster, bitmap.height)
+            chunks += CMD_FEED
+            if (bitmap !== raw) {
+                bitmap.recycle()
             }
         }
-
         chunks += CMD_STOP
         return chunks
     }
@@ -137,7 +226,7 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
                     chunk === CMD_ENABLE || chunk === CMD_WAKEUP -> sleepMs(150)
                     chunk.contentEquals(CMD_FEED) -> sleepMs(180)
                     chunk.contentEquals(CMD_STOP) -> Unit
-                    else -> sleepMs(8)
+                    else -> sleepMs(2)
                 }
             }
             waitForAck(input)
@@ -159,21 +248,6 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
         } finally {
             session.close()
         }
-    }
-
-    private fun renderPageToWidth(page: PdfRenderer.Page, targetWidth: Int): Bitmap {
-        val srcWidth = max(1, page.width)
-        val srcHeight = max(1, page.height)
-        val targetHeight = max(1, (srcHeight.toFloat() / srcWidth.toFloat() * targetWidth).roundToInt())
-
-        val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
-        val matrix = Matrix().apply {
-            setScale(targetWidth.toFloat() / srcWidth.toFloat(), targetHeight.toFloat() / srcHeight.toFloat())
-        }
-        page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-        return bitmap
     }
 
     private fun bitmapToRaster(bitmap: Bitmap): ByteArray {
@@ -222,7 +296,8 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
         )
         chunks += header
         var offset = 0
-        val chunkSize = 1024
+        // ~128 rows per burst (row = 48 bytes) — reduces Bluetooth underrun banding
+        val chunkSize = BYTES_PER_ROW * 128
         while (offset < raster.size) {
             val end = minOf(raster.size, offset + chunkSize)
             chunks += raster.copyOfRange(offset, end)

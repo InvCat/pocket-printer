@@ -1,14 +1,17 @@
 # Tronic Mini Pocket Printer - Quick Android "driver"
 
-This is a minimal Android Print Service app that makes the printer available in Android's native print menu.
+This is a minimal Android app that prints to the Tronic Mini Pocket Printer in two ways:
+
+1. **System Print Service** — appears in Android’s native *Print* dialog  
+2. **Share target** — appears in the system *Share / Send* sheet with a **print preview**
 
 ## What it does
 
-- Appears as `Tronic Mini Pocket Printer` in Android print targets.
-- Accepts system print jobs (PDF from Android print spooler).
-- Renders pages to 384 px width.
-- Supports experimental no-pre-pair mode by manual MAC input.
-- Sends data over Bluetooth Classic SPP with the verified A2Y sequence:
+- Print target name: `Tronic Mini Pocket Printer` (Print Service)
+- Share target label: `Tronic Pocket Printer` (images, PDF, plain text)
+- Renders pages/images to **384 px** width (48 mm @ 203 dpi)
+- Optional manual MAC for experimental pairing-free mode
+- Sends data over Bluetooth Classic SPP (BLE fallback) with the verified A2Y sequence:
   - `10 FF F1 03`
   - `00 x 12`
   - `1D 76 30 ... raster`
@@ -19,7 +22,7 @@ This is a minimal Android Print Service app that makes the printer available in 
 
 1. Open `android-driver` in Android Studio.
 2. Let Gradle sync.
-3. Build and install debug APK on your Android phone.
+3. Build and install (debug or release) on your phone.
 
 ## Build without Android Studio (Windows)
 
@@ -35,38 +38,44 @@ This downloads portable build tools into `.android-build-tools` and creates:
 
 ## Build on GitHub Actions (no local tool install)
 
-This repository includes workflow:
+Workflow: `.github/workflows/build-apk.yml`
 
-`Pocket printer/.github/workflows/build-apk.yml`
-
-How to use:
-1. Push the `Pocket printer` project to a GitHub repository.
-2. Open the repository's `Actions` tab.
-3. Run workflow: `Build Android APK` (or push changes under `android-driver`).
-4. After success, download artifact:
-   `tronic-pocket-print-service-debug-apk`
-5. Extract and install `app-debug.apk` on Android.
+1. Push this project to GitHub.
+2. **Actions** → **Build Android APK**.
+3. Download artifact and install the APK.
 
 ## Setup on phone
 
-1. Recommended: pair `Mini Pocket Printer` in Android Bluetooth settings.
-2. Open app `Tronic Pocket Print Service`.
-3. Either:
-   - `Choose paired printer`, or
-   - enter manual MAC and tap `Save manual MAC (experimental)` for pairing-free attempt.
-4. Enable the print service in:
-   - Settings -> Connected devices -> Printing
-   - Turn on `Tronic Pocket Print Service`
+1. Pair `Mini Pocket Printer` in Android Bluetooth settings (recommended).
+2. Open **Tronic Pocket Print Service**.
+3. **Choose paired printer**, or enter MAC → **Save manual MAC**.
+4. Enable the print service (for the system Print dialog):
+   - **Settings → Connected devices → Printing** (wording varies by OEM)
+   - Turn on **Tronic Pocket Print Service**
 
 ## Print
 
-From any app with Android share/print:
-- choose `Print`
-- select `Tronic Mini Pocket Printer`
-- print
+### A) Share sheet (with preview) — easiest for photos/files
+
+1. In Gallery / Files / Chrome / … tap **Share / Send**
+2. Choose **Tronic Pocket Printer**
+3. Check the **preview** (already scaled to print width)
+4. Tap **Print**
+
+Supports: `image/*`, `application/pdf`, `text/plain` (and multiple images).
+
+### B) System Print dialog
+
+From any app that supports Android print:
+
+1. Choose **Print** (not only Share)
+2. Select **Tronic Mini Pocket Printer**
+3. Print
 
 ## Notes
 
-- This is a quick MVP and uses monochrome thresholding (no advanced dithering yet).
-- Pairing-free mode is best-effort only (depends on phone Bluetooth stack).
-- Android 12+ requires Bluetooth permission prompt in the setup app.
+- MVP uses monochrome thresholding (no advanced dithering yet).
+- Pairing-free mode is best-effort (depends on the phone’s Bluetooth stack).
+- Android 12+ will prompt for Bluetooth permission when you print / pick a device.
+- Classic SPP is the reliable path; only one client should use the printer at a time
+  (don’t keep a PC gateway connected if the phone should print).

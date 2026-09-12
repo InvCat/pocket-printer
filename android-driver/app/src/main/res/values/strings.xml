@@ -6,6 +6,21 @@
     <string name="button_pick_printer">Choose paired printer</string>
     <string name="button_clear_printer">Clear selection</string>
     <string name="button_save_manual">Save manual MAC (experimental)</string>
-    <string name="hint_pairing">Recommended: pair "Mini Pocket Printer" first. Experimental mode: save MAC address manually (can work without pairing on some phones).</string>
+    <string name="hint_pairing">Recommended: pair \"Mini Pocket Printer\" first. Experimental mode: save MAC address manually (can work without pairing on some phones).\n\nYou can also share images, PDFs or text to this app from the system Share sheet for a print preview.</string>
     <string name="manual_address_hint">Manual MAC, e.g. 55:55:09:10:98:B6</string>
+
+    <string name="share_target_label">Tronic Pocket Printer</string>
+    <string name="share_title">Print preview</string>
+    <string name="share_preview_cd">Print preview at 384 px width</string>
+    <string name="share_hint">Preview is scaled to the 48 mm / 384 px print width (as sent to the printer).</string>
+    <string name="share_print">Print</string>
+    <string name="share_open_setup">Open printer setup</string>
+    <string name="share_status_loading">Loading shared content…</string>
+    <string name="share_status_ready">Ready — %1$d page(s). Tap Print.</string>
+    <string name="share_status_empty">Nothing printable in this share.</string>
+    <string name="share_status_need_printer">Select a printer in setup first.</string>
+    <string name="share_status_need_bt">Bluetooth permission required to print.</string>
+    <string name="share_status_printing">Printing…</string>
+    <string name="share_status_done">Done.</string>
+    <string name="share_status_error">Error: %1$s</string>
 </resources>

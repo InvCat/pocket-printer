@@ -24,6 +24,36 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ShareReceiveActivity"
+            android:exported="true"
+            android:label="@string/share_target_label"
+            android:theme="@style/Theme.TronicPocketPrinter">
+            <!-- Images -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <!-- PDF -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
+            <!-- Plain text (notes, share sheet text) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".TronicPrintService"
             android:permission="android.permission.BIND_PRINT_SERVICE"

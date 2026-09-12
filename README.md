@@ -53,10 +53,13 @@ python tronic_printer.py image note.png --address 55:55:xx:xx:xx:xx
 ### 3. Desktop GUI
 [`tronic_gui.py`](tronic_gui.py) / [`start_gui.bat`](start_gui.bat) — a simple Tk interface for connection, preview, and printing without living in the terminal.
 
-### 4. Android Print Service
-[`android-driver/`](android-driver/) — a minimal system print target named **Tronic Mini Pocket Printer**. Print from any Android app that supports the system Print sheet; pages are rendered to 384 px and sent with the verified A2Y sequence.
+### 4. Android Print Service + Share target
+[`android-driver/`](android-driver/) — **Tronic Pocket Print Service** for Android:
 
-Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions (`Build Android APK` → artifact). Setup notes are in [`android-driver/README.md`](android-driver/README.md).
+- System **Print** dialog target (`Tronic Mini Pocket Printer`)
+- System **Share / Send** target with **print preview** (images, PDF, text)
+
+Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions (`Build Android APK` → artifact). Setup notes: [`android-driver/README.md`](android-driver/README.md).
 
 ### 5. Raspberry Pi network gateway (CUPS / IPP)
 [`rpi-gateway/`](rpi-gateway/) — CUPS/IPP (+ optional TCP `:9100`) so the Tronic shows up as a normal LAN printer. The Pi holds Bluetooth (or USB-C) to the device; clients only talk to the Pi. Full reference: [`rpi-gateway/README.md`](rpi-gateway/README.md).
@@ -139,7 +142,7 @@ If you also grabbed one of these from Lidl (or a rebranded twin with the same Lu
 
 ## Status
 
-Working MVP. Image printing uses dithering in the Python path; the Android service still uses simple thresholding. Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but intentionally unused — Classic SPP is the reliable path.
+Working MVP. Image printing uses dithering in the Python / Pi gateway path; the Android app still uses simple thresholding. Android supports both the system Print dialog and a Share-sheet target with preview. Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but Classic SPP is the reliable path.
 
 ---
 
