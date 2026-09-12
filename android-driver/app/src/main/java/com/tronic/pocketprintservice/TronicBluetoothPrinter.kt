@@ -110,16 +110,30 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
             return Bitmap.createScaledBitmap(src, PRINT_WIDTH, targetHeight, true)
         }
 
+        /** Rotate clockwise by 90/180/270°. Returns [source] if degrees is a multiple of 360. */
+        fun rotateBitmap(source: Bitmap, degrees: Int): Bitmap {
+            val d = ((degrees % 360) + 360) % 360
+            if (d == 0) {
+                return source
+            }
+            val matrix = Matrix().apply { postRotate(d.toFloat()) }
+            return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
+        }
+
         /**
          * Scale to 384 px width and Floyd–Steinberg dither to pure black/white
          * (same approach as [tronic_printer.py] `Image.convert("1")`).
          * Preview and print should both use this so WYSIWYG matches the head.
          */
-        fun preparePrintBitmap(source: Bitmap): Bitmap {
-            val fitted = fitBitmapToPrintWidth(source)
+        fun preparePrintBitmap(source: Bitmap, rotateDegrees: Int = 0): Bitmap {
+            val rotated = rotateBitmap(source, rotateDegrees)
+            val fitted = fitBitmapToPrintWidth(rotated)
             val mono = floydSteinbergMono(fitted)
-            if (fitted !== source && fitted !== mono) {
+            if (fitted !== rotated && fitted !== mono) {
                 fitted.recycle()
+            }
+            if (rotated !== source && rotated !== mono) {
+                rotated.recycle()
             }
             return mono
         }

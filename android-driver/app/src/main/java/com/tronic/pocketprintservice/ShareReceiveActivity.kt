@@ -25,8 +25,12 @@ class ShareReceiveActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     private lateinit var printerText: TextView
     private lateinit var printButton: Button
+    private lateinit var rotateButton: Button
 
+    /** Colour / grey sources kept so rotate can re-dither cleanly. */
+    private val sourcePages = mutableListOf<Bitmap>()
     private val pages = mutableListOf<Bitmap>()
+    private var rotateDegrees = 0
     private val worker = Executors.newSingleThreadExecutor()
 
     private val btPermissionLauncher =
@@ -48,38 +52,37 @@ class ShareReceiveActivity : AppCompatActivity() {
         statusText = findViewById(R.id.shareStatusText)
         printerText = findViewById(R.id.sharePrinterText)
         printButton = findViewById(R.id.sharePrintButton)
+        rotateButton = findViewById(R.id.shareRotateButton)
         val setupButton = findViewById<Button>(R.id.shareOpenSetupButton)
 
         refreshPrinterLabel()
         printButton.setOnClickListener { ensureBtAndPrint() }
+        rotateButton.setOnClickListener { rotatePreview() }
         setupButton.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
         }
+        rotateButton.isEnabled = false
 
         setStatus(getString(R.string.share_status_loading))
         worker.execute {
             try {
                 val loaded = loadFromIntent(intent)
                 runOnUiThread {
-                    pages.clear()
-                    pages.addAll(loaded)
-                    if (pages.isEmpty()) {
+                    recycleAll()
+                    sourcePages.addAll(loaded)
+                    if (sourcePages.isEmpty()) {
                         setStatus(getString(R.string.share_status_empty))
                         printButton.isEnabled = false
+                        rotateButton.isEnabled = false
                     } else {
-                        previewImage.setImageBitmap(pages.first())
-                        val more = if (pages.size > 1) " (+${pages.size - 1} page(s))" else ""
-                        setStatus(getString(R.string.share_status_ready, pages.size) + more)
-                        printButton.isEnabled = PrinterConfig.getPrinterAddress(this) != null
-                        if (PrinterConfig.getPrinterAddress(this) == null) {
-                            setStatus(getString(R.string.share_status_need_printer))
-                        }
+                        rebuildPreviewAsync(initial = true)
                     }
                 }
             } catch (t: Throwable) {
                 runOnUiThread {
                     setStatus(getString(R.string.share_status_error, t.message ?: t.javaClass.simpleName))
                     printButton.isEnabled = false
+                    rotateButton.isEnabled = false
                 }
             }
         }
@@ -91,16 +94,78 @@ class ShareReceiveActivity : AppCompatActivity() {
         if (pages.isNotEmpty() && PrinterConfig.getPrinterAddress(this) != null) {
             printButton.isEnabled = true
             if (statusText.text.toString().contains("printer", ignoreCase = true)) {
-                setStatus(getString(R.string.share_status_ready, pages.size))
+                setStatus(readyStatus())
             }
         }
     }
 
     override fun onDestroy() {
         worker.shutdownNow()
+        recycleAll()
+        super.onDestroy()
+    }
+
+    private fun recycleAll() {
         pages.forEach { it.recycle() }
         pages.clear()
-        super.onDestroy()
+        sourcePages.forEach { it.recycle() }
+        sourcePages.clear()
+    }
+
+    private fun readyStatus(): String {
+        val more = if (pages.size > 1) " (+${pages.size - 1} page(s))" else ""
+        val rot = if (rotateDegrees == 0) "" else " · ${rotateDegrees}°"
+        return getString(R.string.share_status_ready, pages.size) + more + rot
+    }
+
+    private fun rotatePreview() {
+        if (sourcePages.isEmpty()) return
+        rotateDegrees = (rotateDegrees + 90) % 360
+        rebuildPreviewAsync(initial = false)
+    }
+
+    private fun rebuildPreviewAsync(initial: Boolean) {
+        rotateButton.isEnabled = false
+        printButton.isEnabled = false
+        setStatus(getString(R.string.share_status_rotating))
+        val sources = sourcePages.toList()
+        val degrees = rotateDegrees
+        worker.execute {
+            try {
+                val built = sources.map { src ->
+                    TronicBluetoothPrinter.preparePrintBitmap(src, rotateDegrees = degrees)
+                }
+                runOnUiThread {
+                    pages.forEach { it.recycle() }
+                    pages.clear()
+                    pages.addAll(built)
+                    if (pages.isEmpty()) {
+                        setStatus(getString(R.string.share_status_empty))
+                        rotateButton.isEnabled = sourcePages.isNotEmpty()
+                        printButton.isEnabled = false
+                    } else {
+                        previewImage.setImageBitmap(pages.first())
+                        rotateButton.isEnabled = true
+                        val hasPrinter = PrinterConfig.getPrinterAddress(this) != null
+                        printButton.isEnabled = hasPrinter
+                        setStatus(
+                            if (hasPrinter) readyStatus()
+                            else getString(R.string.share_status_need_printer)
+                        )
+                        if (!initial && degrees != 0) {
+                            toast(getString(R.string.share_rotated_toast, degrees))
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                runOnUiThread {
+                    setStatus(getString(R.string.share_status_error, t.message ?: t.javaClass.simpleName))
+                    rotateButton.isEnabled = sourcePages.isNotEmpty()
+                    printButton.isEnabled = pages.isNotEmpty() &&
+                        PrinterConfig.getPrinterAddress(this) != null
+                }
+            }
+        }
     }
 
     private fun refreshPrinterLabel() {
@@ -142,8 +207,8 @@ class ShareReceiveActivity : AppCompatActivity() {
             return
         }
         printButton.isEnabled = false
+        rotateButton.isEnabled = false
         setStatus(getString(R.string.share_status_printing))
-        // Copy bitmaps for background thread (UI may recycle on destroy)
         val copies = pages.map { it.copy(it.config ?: Bitmap.Config.ARGB_8888, false) }
         worker.execute {
             try {
@@ -151,12 +216,14 @@ class ShareReceiveActivity : AppCompatActivity() {
                 runOnUiThread {
                     setStatus(getString(R.string.share_status_done))
                     printButton.isEnabled = true
+                    rotateButton.isEnabled = true
                     toast("Printed.")
                 }
             } catch (t: Throwable) {
                 runOnUiThread {
                     setStatus(getString(R.string.share_status_error, t.message ?: t.javaClass.simpleName))
                     printButton.isEnabled = true
+                    rotateButton.isEnabled = true
                     toast(t.message ?: "Print failed")
                 }
             } finally {
@@ -165,6 +232,7 @@ class ShareReceiveActivity : AppCompatActivity() {
         }
     }
 
+    /** Load colour/grey source bitmaps (dither happens in [rebuildPreviewAsync]). */
     private fun loadFromIntent(intent: Intent?): List<Bitmap> {
         if (intent == null) return emptyList()
         val action = intent.action
@@ -172,7 +240,6 @@ class ShareReceiveActivity : AppCompatActivity() {
 
         when (action) {
             Intent.ACTION_SEND -> {
-                // Prefer a file/stream (screenshot, PDF) over plain text.
                 val uri = streamUri(intent)
                 if (uri != null) {
                     return loadUri(uri, type)
@@ -183,14 +250,7 @@ class ShareReceiveActivity : AppCompatActivity() {
                     if (isWebLinkShare(text)) {
                         throw IllegalArgumentException(getString(R.string.share_error_url_only))
                     }
-                    return listOf(
-                        run {
-                            val rendered = TronicBluetoothPrinter.renderTextToBitmap(text)
-                            val mono = TronicBluetoothPrinter.preparePrintBitmap(rendered)
-                            if (mono !== rendered) rendered.recycle()
-                            mono
-                        }
-                    )
+                    return listOf(TronicBluetoothPrinter.renderTextToBitmap(text))
                 }
                 return emptyList()
             }
@@ -207,10 +267,6 @@ class ShareReceiveActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Chrome / browsers often "share" only the page URL (sometimes with a title line),
-     * not a screenshot or PDF — printing that yields a useless one-line strip.
-     */
     private fun isWebLinkShare(text: String): Boolean {
         val lines = text.replace("\r\n", "\n").lines().map { it.trim() }.filter { it.isNotEmpty() }
         if (lines.isEmpty()) return false
@@ -219,7 +275,6 @@ class ShareReceiveActivity : AppCompatActivity() {
             urlLine.startsWith("https://", ignoreCase = true) ||
             urlLine.matches(Regex("^https?://\\S+$", RegexOption.IGNORE_CASE))
         if (!looksUrl) return false
-        // Single URL, or "Title" + URL (typical browser share).
         return lines.size == 1 || lines.size == 2
     }
 
@@ -245,52 +300,33 @@ class ShareReceiveActivity : AppCompatActivity() {
         val mime = contentResolver.getType(uri) ?: mimeHint
         return when {
             mime.equals("application/pdf", ignoreCase = true) ||
-                (uri.toString().lowercase().endsWith(".pdf")) -> {
+                uri.toString().lowercase().endsWith(".pdf") -> {
                 contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    TronicBluetoothPrinter.renderPdfToBitmaps(pfd).map { page ->
-                        val mono = TronicBluetoothPrinter.preparePrintBitmap(page)
-                        if (mono !== page) page.recycle()
-                        mono
-                    }
+                    TronicBluetoothPrinter.renderPdfToBitmaps(pfd)
                 } ?: emptyList()
             }
-                    mime.startsWith("image/") || mimeHint.startsWith("image/") -> {
+            mime.startsWith("image/") || mimeHint.startsWith("image/") -> {
                 contentResolver.openInputStream(uri)?.use { input ->
                     val decoded = BitmapFactory.decodeStream(input)
                         ?: throw IllegalArgumentException("Could not decode image.")
-                    val mono = TronicBluetoothPrinter.preparePrintBitmap(decoded)
-                    if (mono !== decoded) {
-                        decoded.recycle()
-                    }
-                    listOf(mono)
+                    listOf(decoded)
                 } ?: emptyList()
             }
             mime.startsWith("text/") -> {
                 contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-                    val text = reader.readText()
-                    val rendered = TronicBluetoothPrinter.renderTextToBitmap(text)
-                    val mono = TronicBluetoothPrinter.preparePrintBitmap(rendered)
-                    if (mono !== rendered) rendered.recycle()
-                    listOf(mono)
+                    listOf(TronicBluetoothPrinter.renderTextToBitmap(reader.readText()))
                 } ?: emptyList()
             }
             else -> {
-                // Best-effort: try image, then PDF
                 contentResolver.openInputStream(uri)?.use { input ->
                     val bytes = input.readBytes()
                     val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     if (decoded != null) {
-                        val mono = TronicBluetoothPrinter.preparePrintBitmap(decoded)
-                        if (mono !== decoded) decoded.recycle()
-                        return listOf(mono)
+                        return listOf(decoded)
                     }
                 }
                 contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    return TronicBluetoothPrinter.renderPdfToBitmaps(pfd).map { page ->
-                        val mono = TronicBluetoothPrinter.preparePrintBitmap(page)
-                        if (mono !== page) page.recycle()
-                        mono
-                    }
+                    return TronicBluetoothPrinter.renderPdfToBitmaps(pfd)
                 }
                 emptyList()
             }
