@@ -1,0 +1,39 @@
+# Tronic Mini Pocket Printer — Raspberry Pi gateway
+#
+# Copy to /etc/tronic-pocket-printer.conf and edit.
+
+# Classic Bluetooth MAC of the printer (colon form in this file is fine).
+# Pair once with: bluetoothctl scan on / pair / trust
+TRONIC_ADDR=55:55:00:00:00:00
+
+# Or override the CUPS device URI explicitly. Prefer dash-MAC for CUPS:
+# DEVICE_URI=tronic:55-55-09-10-98-B6
+# USB-C serial:
+# DEVICE_URI=tronic:/dev/ttyACM0
+
+
+# Print density: 0=light, 1=medium, 2=dark
+TRONIC_DENSITY=1
+
+# PDF rasterize DPI (hardware is 203)
+TRONIC_DPI=203
+
+# Raster stream pacing (banding fix): chunk bytes + gap ms between chunks.
+# Larger/faster keeps the thermal head fed over Bluetooth SPP.
+TRONIC_RASTER_CHUNK=6144
+TRONIC_RASTER_GAP_MS=2
+
+# Crop blank top/bottom of each page so roll length follows content (1/0).
+# On 48 mm (roll-native) jobs only vertical trim is used — never magnifies text.
+TRONIC_TRIM=1
+
+# Paper advance after last ink so the strip clears the tear bar (ESC/J feed)
+TRONIC_TEAR_MM=10
+
+# Reflow A4/Letter text via render_text (0=off). Keep off when Windows uses
+# the 48 mm form + Imagesetter — then output is 1:1 WYSIWYG at TRONIC_DPI.
+TRONIC_REFLOW=0
+
+# Optional TCP JetDirect-style listener (also started by systemd unit)
+TCP_PORT=9100
+TCP_HOST=0.0.0.0

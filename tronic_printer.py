@@ -132,6 +132,12 @@ class RFCOMMTransport:
                               socket.BTPROTO_RFCOMM)
             s.settimeout(15)
             try:
+                # Bigger outbound buffer so raster bursts don't stall the head
+                # (underrun → horizontal banding on photos).
+                try:
+                    s.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 256 * 1024)
+                except OSError:
+                    pass
                 s.connect((self.address, self.channel))
                 self.sock = s
                 return
@@ -303,8 +309,18 @@ class Printer:
         return self.ask(bytes([0x10, 0xFF, 0x12, (minutes >> 8) & 0xFF, minutes & 0xFF]))
 
     def feed(self, dots: int = END_LINE_DOT) -> None:
-        """printLineDotsLuck() - papir eloretolasa n pont-sorral."""
-        self.send(bytes([0x1B, 0x4A, dots & 0xFF]))
+        """printLineDotsLuck() - papir eloretolasa n pont-sorral.
+
+        ESC/J takes a single byte (max 255 ≈ 32 mm @ 203 dpi); larger
+        advances are split into multiple commands.
+        """
+        remaining = max(0, int(dots))
+        while remaining > 0:
+            chunk = min(255, remaining)
+            self.send(bytes([0x1B, 0x4A, chunk]))
+            remaining -= chunk
+            if remaining:
+                time.sleep(0.05)
 
     # -- nyomtatas --
 
@@ -338,9 +354,16 @@ class Printer:
         self.send(bytes([0x1D, 0x76, 0x30, 0x00,
                          BYTES_PER_ROW % 256, BYTES_PER_ROW // 256,
                          height % 256, height // 256]))
-        for i in range(0, len(data), 1024):
-            self.send(data[i:i + 1024])
-            time.sleep(0.02)
+        # Stream raster in large, row-aligned bursts. The old 1 KiB + 20 ms
+        # pacing starved the head over SPP → visible horizontal bands on photos.
+        # Defaults: ~128 rows (6144 B) with a 2 ms gap (override via env).
+        chunk = int(os.environ.get("TRONIC_RASTER_CHUNK", str(BYTES_PER_ROW * 128)))
+        chunk = max(BYTES_PER_ROW, (chunk // BYTES_PER_ROW) * BYTES_PER_ROW)
+        gap = float(os.environ.get("TRONIC_RASTER_GAP_MS", "2")) / 1000.0
+        for i in range(0, len(data), chunk):
+            self.send(data[i:i + chunk])
+            if gap > 0 and i + chunk < len(data):
+                time.sleep(gap)
         time.sleep(0.5)
 
         self.feed(feed_dots)

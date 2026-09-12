@@ -12,7 +12,7 @@ It worked… inside its own little world. Closed, limited, and tightly tied to o
 
 So I reverse-engineered the factory APK (`com.printer.lidloffice`), verified every command against a real device, and started building what I actually wanted: **a universal driver for a locked-down pocket printer.**
 
-This repository is that work — protocol notes, a Python client, a desktop GUI, and an Android Print Service that plugs into the native print menu.
+This repository is that work — protocol notes, a Python client, a desktop GUI, an Android Print Service, and a Raspberry Pi CUPS/IPP gateway so the printer can show up as a normal network printer on Windows.
 
 ---
 
@@ -58,6 +58,24 @@ python tronic_printer.py image note.png --address 55:55:xx:xx:xx:xx
 
 Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions (`Build Android APK` → artifact). Setup notes are in [`android-driver/README.md`](android-driver/README.md).
 
+### 5. Raspberry Pi network gateway (CUPS / IPP)
+[`rpi-gateway/`](rpi-gateway/) — run the printer as a **shared network printer** on a Raspberry Pi. Windows prints via IPP; the Pi is the real A2Y driver (Bluetooth/USB).
+
+**Recommended Windows side:** driver **MS Publisher Imagesetter** (not IPP Class Driver), paper **Tronic 48×80 mm**, colour **off**, and **no** direct Windows↔printer Bluetooth (SPP is single-client — the Pi must own the link).
+
+```bash
+cd rpi-gateway
+sudo ./install.sh --address 55:55:xx:xx:xx:xx
+```
+
+On Windows (Admin PowerShell), from `rpi-gateway/`:
+
+```powershell
+.\add-printer-windows.ps1 -PrinterHost <pi-ip>
+```
+
+Full setup, tear-off margin, WYSIWYG 48 mm behaviour, and photo banding / raster pacing: [`rpi-gateway/README.md`](rpi-gateway/README.md).
+
 ---
 
 ## Why this exists
@@ -66,7 +84,7 @@ Closed companion apps turn useful hardware into disposable toys.
 This project is the opposite bet:
 
 - **Own the wire protocol** — document it so it can’t disappear with the next store app update.
-- **Print from anywhere** — system print on Android, CLI/GUI on the desktop.
+- **Print from anywhere** — system print on Android, CLI/GUI on the desktop, IPP network printer via a Raspberry Pi gateway.
 - **Stay honest to the hardware** — 384 px, 203 dpi, SPP-first, measured and re-checked on a real unit.
 
 If you also grabbed one of these from Lidl (or a rebranded twin with the same LuckPrinter guts), you’re welcome here.
@@ -75,7 +93,7 @@ If you also grabbed one of these from Lidl (or a rebranded twin with the same Lu
 
 ## Status
 
-Working MVP. Monochrome thresholding for images (dithering still to come). Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but intentionally unused — Classic SPP is the reliable path.
+Working MVP. Image printing uses dithering in the Python path; the Android service still uses simple thresholding. Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but intentionally unused — Classic SPP is the reliable path.
 
 ---
 

@@ -1,0 +1,81 @@
+*PPD-Adobe: "4.3"
+*FormatVersion: "4.3"
+*FileVersion: "1.2"
+*LanguageVersion: English
+*LanguageEncoding: ISOLatin1
+*PCFileName: "TRONIC.PPD"
+*Manufacturer: "Tronic"
+*Product: "(Mini Pocket Printer)"
+*ModelName: "Tronic Mini Pocket Printer"
+*ShortNickName: "Tronic Pocket"
+*NickName: "Tronic Mini Pocket Printer 48mm (A2Y)"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: False
+*DefaultColorSpace: Gray
+*FileSystem: False
+*Throughput: "1"
+*LandscapeOrientation: Plus90
+*TTRasterizer: Type42
+*VariablePaperSize: True
+*HWMargins: 0 0 0 0
+
+*% Physical roll width is 48 mm @ 203 dpi = 384 px.
+*% In PostScript points (1 pt = 1/72 in): 48 mm = 136.063 pt.
+*% Default height is a short receipt strip so Windows/Notepad do not
+*% compose onto A4/Letter.
+
+*cupsVersion: 1.4
+*cupsManualCopies: True
+*cupsModelNumber: 1
+*cupsFilter2: "application/pdf application/pdf 0 -"
+*cupsFilter2: "image/png application/pdf 0 imagetopdf"
+*cupsFilter2: "image/jpeg application/pdf 0 imagetopdf"
+*cupsFilter2: "application/vnd.cups-pdf application/pdf 0 -"
+
+*OpenUI *PageSize/Media Size: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: Roll48x80
+*PageSize Roll48x80/48 x 80 mm: "<</PageSize[136.063 226.772]/ImagingBBox null>>setpagedevice"
+*PageSize Roll48x120/48 x 120 mm: "<</PageSize[136.063 340.157]/ImagingBBox null>>setpagedevice"
+*PageSize Roll48x200/48 x 200 mm: "<</PageSize[136.063 566.929]/ImagingBBox null>>setpagedevice"
+*PageSize Roll48x400/48 x 400 mm: "<</PageSize[136.063 1133.858]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageSize
+
+*OpenUI *PageRegion: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: Roll48x80
+*PageRegion Roll48x80/48 x 80 mm: "<</PageSize[136.063 226.772]/ImagingBBox null>>setpagedevice"
+*PageRegion Roll48x120/48 x 120 mm: "<</PageSize[136.063 340.157]/ImagingBBox null>>setpagedevice"
+*PageRegion Roll48x200/48 x 200 mm: "<</PageSize[136.063 566.929]/ImagingBBox null>>setpagedevice"
+*PageRegion Roll48x400/48 x 400 mm: "<</PageSize[136.063 1133.858]/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageRegion
+
+*DefaultImageableArea: Roll48x80
+*ImageableArea Roll48x80: "0 0 136.063 226.772"
+*ImageableArea Roll48x120: "0 0 136.063 340.157"
+*ImageableArea Roll48x200: "0 0 136.063 566.929"
+*ImageableArea Roll48x400: "0 0 136.063 1133.858"
+
+*DefaultPaperDimension: Roll48x80
+*PaperDimension Roll48x80: "136.063 226.772"
+*PaperDimension Roll48x120: "136.063 340.157"
+*PaperDimension Roll48x200: "136.063 566.929"
+*PaperDimension Roll48x400: "136.063 1133.858"
+
+*% IPP / driverless helpers (PWG-ish custom names)
+*cupsPageSizeName Roll48x80/48x80mm: "custom_48x80mm"
+*cupsPageSizeName Roll48x120/48x120mm: "custom_48x120mm"
+*cupsPageSizeName Roll48x200/48x200mm: "custom_48x200mm"
+*cupsPageSizeName Roll48x400/48x400mm: "custom_48x400mm"
+
+*OpenUI *Density/Print Density: PickOne
+*DefaultDensity: 1
+*Density 0/Light: ""
+*Density 1/Medium: ""
+*Density 2/Dark: ""
+*CloseUI: *Density
+
+*DefaultFont: Courier
+*Font Courier: Standard "(1.05)" Standard ROM
+*End

@@ -8,6 +8,10 @@ __pycache__/
 android-driver/.gradle/
 android-driver/app/build/
 android-driver/local.properties
+dist/
+
+# Editor / agent
+.cursor/
 
 # Large reverse-engineering bundles
 *.apks

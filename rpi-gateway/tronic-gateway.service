@@ -1,0 +1,16 @@
+[Unit]
+Description=Tronic Mini Pocket Printer TCP gateway (:9100)
+After=bluetooth.service network.target
+Wants=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/lib/tronic-pocket-printer/tronic-gateway.sh
+Restart=on-failure
+RestartSec=3
+User=tronic-print
+Group=tronic-print
+SupplementaryGroups=bluetooth dialout lp
+
+[Install]
+WantedBy=multi-user.target
