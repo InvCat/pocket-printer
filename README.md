@@ -59,7 +59,7 @@ python tronic_printer.py image note.png --address 55:55:xx:xx:xx:xx
 - System **Print** dialog target (`Tronic Mini Pocket Printer`)
 - System **Share / Send** target with **print preview** (images, PDF, text)
 
-Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions (`Build Android APK` → artifact). Setup notes: [`android-driver/README.md`](android-driver/README.md).
+Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions / Releases. From **0.1.6** the APK uses a stable project signing key (one-time uninstall of older builds if Android reports a signature conflict). Setup notes: [`android-driver/README.md`](android-driver/README.md).
 
 ### 5. Raspberry Pi network gateway (CUPS / IPP)
 [`rpi-gateway/`](rpi-gateway/) — CUPS/IPP (+ optional TCP `:9100`) so the Tronic shows up as a normal LAN printer. The Pi holds Bluetooth (or USB-C) to the device; clients only talk to the Pi. Full reference: [`rpi-gateway/README.md`](rpi-gateway/README.md).

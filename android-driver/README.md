@@ -32,9 +32,9 @@ From the parent `Pocket printer` folder run:
 build_android_apk_no_studio.bat
 ```
 
-This downloads portable build tools into `.android-build-tools` and creates:
+This downloads portable build tools into `.android-build-tools` and creates a signed APK under:
 
-`android-driver\app\build\outputs\apk\debug\app-debug.apk`
+`android-driver\app\build\outputs\apk\`
 
 ## Build on GitHub Actions (no local tool install)
 
@@ -43,6 +43,14 @@ Workflow: `.github/workflows/build-apk.yml`
 1. Push this project to GitHub.
 2. **Actions** → **Build Android APK**.
 3. Download artifact and install the APK.
+
+Debug and release builds use the same project keystore under `signing/`, so APKs from CI and local builds share one signature and can upgrade each other.
+
+### Signature / “App not installed” conflicts
+
+Android refuses to upgrade an app signed with a **different** key. That used to happen when CI used a fresh debug key each runner.
+
+From **0.1.6** onward, installs share one stable key. **Once**, uninstall any older build (0.1.5 and below), then install 0.1.6+. After that, later releases should update in place.
 
 ## Setup on phone
 

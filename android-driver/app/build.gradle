@@ -3,6 +3,12 @@ plugins {
     id "org.jetbrains.kotlin.android"
 }
 
+def keystorePropsFile = rootProject.file("signing/keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace "com.tronic.pocketprintservice"
     compileSdk 34
@@ -11,14 +17,34 @@ android {
         applicationId "com.tronic.pocketprintservice"
         minSdk 26
         targetSdk 34
-        versionCode 6
-        versionName "0.1.5"
+        versionCode 7
+        versionName "0.1.6"
+    }
+
+    signingConfigs {
+        // Stable project key so CI + local APKs upgrade without uninstall.
+        if (keystorePropsFile.exists()) {
+            create("release") {
+                storeFile rootProject.file("signing/${keystoreProps['storeFile']}")
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
