@@ -56,7 +56,7 @@ From **0.1.6** onward, installs share one stable key. **Once**, uninstall any ol
 
 1. Pair `Mini Pocket Printer` in Android Bluetooth settings (recommended).
 2. Open **Tronic Pocket Print Service**.
-3. **Choose paired printer**, or enter MAC → **Save manual MAC**.
+3. **Scan** next to the MAC field (nearby Tronic printers), or **Choose paired printer**, or type MAC → **Save manual MAC**.
 4. Enable the print service (for the system Print dialog):
    - **Settings → Connected devices → Printing** (wording varies by OEM)
    - Turn on **Tronic Pocket Print Service**

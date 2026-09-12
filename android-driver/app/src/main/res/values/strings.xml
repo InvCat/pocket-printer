@@ -6,8 +6,30 @@
     <string name="button_pick_printer">Choose paired printer</string>
     <string name="button_clear_printer">Clear selection</string>
     <string name="button_save_manual">Save manual MAC (experimental)</string>
-    <string name="hint_pairing">Recommended: pair \"Mini Pocket Printer\" first. Experimental mode: save MAC address manually (can work without pairing on some phones).\n\nYou can also share images, PDFs or text to this app from the system Share sheet for a print preview.</string>
+    <string name="button_scan">Scan</string>
+    <string name="hint_pairing">Recommended: pair \"Mini Pocket Printer\" first. Or tap Scan next to the MAC field to find nearby Tronic printers, then Save manual MAC (can work without pairing on some phones).\n\nYou can also share images, PDFs or text to this app from the system Share sheet for a print preview.</string>
     <string name="manual_address_hint">Manual MAC, e.g. 55:55:09:10:98:B6</string>
+
+    <string name="dialog_select_paired">Select paired printer</string>
+    <string name="dialog_scanning_title">Scanning Bluetooth…</string>
+    <string name="dialog_scanning_message">Looking for Tronic / Mini Pocket Printer devices. Keep the printer on and nearby.</string>
+    <string name="dialog_scan_results_title">Tronic printers found</string>
+    <string name="dialog_scan_empty_title">No Tronic printer found</string>
+    <string name="dialog_scan_empty_message">No nearby device matched Mini Pocket Printer / Tronic / 55:55:…\n\nTurn the printer on, stay close, then Scan again. You can still type the MAC manually.</string>
+    <string name="unknown_device">Unknown device</string>
+
+    <string name="toast_bt_permission_denied">Bluetooth permission denied.</string>
+    <string name="toast_printer_cleared">Printer selection cleared.</string>
+    <string name="toast_invalid_mac">Invalid MAC format. Example: 55:55:09:10:98:B6</string>
+    <string name="toast_manual_saved">Manual printer address saved.</string>
+    <string name="toast_no_paired">No paired Bluetooth devices found.</string>
+    <string name="toast_selected">Selected: %1$s</string>
+    <string name="toast_no_adapter">Bluetooth adapter not available.</string>
+    <string name="toast_bt_disabled">Enable Bluetooth first, then try again.</string>
+    <string name="toast_scan_in_progress">Scan already in progress.</string>
+    <string name="toast_scan_failed">Could not start Bluetooth scan.</string>
+    <string name="toast_scan_cancelled">Scan cancelled.</string>
+    <string name="toast_mac_filled">MAC filled: %1$s — tap Save to use it.</string>
 
     <string name="share_target_label">Tronic Pocket Printer</string>
     <string name="share_title">Print preview</string>

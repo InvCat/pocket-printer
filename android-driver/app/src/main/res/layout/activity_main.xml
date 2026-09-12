@@ -28,14 +28,29 @@
         android:textSize="16sp"
         android:textStyle="bold" />
 
-    <EditText
-        android:id="@+id/manualAddressEdit"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:hint="@string/manual_address_hint"
-        android:inputType="textNoSuggestions|textCapCharacters"
-        android:maxLines="1" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/manualAddressEdit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="@string/manual_address_hint"
+            android:inputType="textNoSuggestions|textCapCharacters"
+            android:maxLines="1" />
+
+        <Button
+            android:id="@+id/scanPrinterButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/button_scan" />
+    </LinearLayout>
 
     <Button
         android:id="@+id/saveManualButton"
