@@ -13,9 +13,11 @@
     <string name="dialog_select_paired">Select paired printer</string>
     <string name="dialog_scanning_title">Scanning Bluetooth…</string>
     <string name="dialog_scanning_message">Looking for Tronic / Mini Pocket Printer devices. Keep the printer on and nearby.</string>
+    <string name="dialog_scanning_counts">Tronic matches: %1$d · Nearby devices seen: %2$d</string>
     <string name="dialog_scan_results_title">Tronic printers found</string>
-    <string name="dialog_scan_empty_title">No Tronic printer found</string>
-    <string name="dialog_scan_empty_message">No nearby device matched Mini Pocket Printer / Tronic / 55:55:…\n\nTurn the printer on, stay close, then Scan again. You can still type the MAC manually.</string>
+    <string name="dialog_scan_all_title">Nearby Bluetooth devices</string>
+    <string name="dialog_scan_empty_title">No devices found</string>
+    <string name="dialog_scan_empty_message">Bluetooth inquiry finished with no results.\n\nTurn the printer on, stay close, allow Location if asked, then Scan again. You can still type the MAC manually.</string>
     <string name="unknown_device">Unknown device</string>
 
     <string name="toast_bt_permission_denied">Bluetooth permission denied.</string>

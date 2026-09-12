@@ -10,6 +10,8 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -28,8 +30,38 @@ class MainActivity : AppCompatActivity() {
     private var pendingBtAction = PendingBtAction.NONE
 
     private var scanning = false
+    private var discoveryStarted = false
     private var scanProgressDialog: AlertDialog? = null
     private val scannedByAddress = LinkedHashMap<String, BluetoothDevice>()
+    private val allFoundByAddress = LinkedHashMap<String, BluetoothDevice>()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val scanTimeoutRunnable = Runnable {
+        if (scanning) {
+            stopDiscoveryQuietly()
+            finishPrinterScan(cancelled = false)
+        }
+    }
+    private val startDiscoveryRunnable = Runnable {
+        if (!scanning || isFinishing || isDestroyed) return@Runnable
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return@Runnable
+        val started = try {
+            adapter.startDiscovery()
+        } catch (_: SecurityException) {
+            false
+        }
+        if (!started) {
+            unregisterDiscoveryReceiver()
+            scanning = false
+            discoveryStarted = false
+            scanButton.isEnabled = true
+            dismissScanProgress()
+            toast(getString(R.string.toast_scan_failed))
+            return@Runnable
+        }
+        discoveryStarted = true
+        mainHandler.removeCallbacks(scanTimeoutRunnable)
+        mainHandler.postDelayed(scanTimeoutRunnable, SCAN_TIMEOUT_MS)
+    }
 
     private val btPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
@@ -48,7 +80,7 @@ class MainActivity : AppCompatActivity() {
                 PendingBtAction.SCAN -> {
                     pendingBtAction = PendingBtAction.NONE
                     val canScan = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        scanOk && connectOk
+                        scanOk && connectOk && locationOk
                     } else {
                         locationOk
                     }
@@ -72,12 +104,18 @@ class MainActivity : AppCompatActivity() {
                         @Suppress("DEPRECATION")
                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                     } ?: return
+                    val key = device.address.uppercase()
+                    allFoundByAddress[key] = device
                     if (looksLikeTronicPrinter(device)) {
-                        scannedByAddress[device.address.uppercase()] = device
+                        scannedByAddress[key] = device
                     }
+                    updateScanProgressMessage()
                 }
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
-                    finishPrinterScan()
+                    // Ignore leftover FINISHED from cancelDiscovery before our inquiry starts.
+                    if (discoveryStarted) {
+                        finishPrinterScan(cancelled = false)
+                    }
                 }
             }
         }
@@ -117,6 +155,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacks(scanTimeoutRunnable)
+        mainHandler.removeCallbacks(startDiscoveryRunnable)
         stopDiscoveryQuietly()
         dismissScanProgress()
         super.onDestroy()
@@ -162,8 +202,15 @@ class MainActivity : AppCompatActivity() {
                     need += Manifest.permission.BLUETOOTH_SCAN
                 }
             }
+            // Classic inquiry is more reliable with location on many OEMs (even on API 31+).
+            if (action == PendingBtAction.SCAN) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    need += Manifest.permission.ACCESS_FINE_LOCATION
+                }
+            }
         } else if (action == PendingBtAction.SCAN) {
-            // Classic discovery on API 26–30 needs location.
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
             ) {
@@ -222,11 +269,14 @@ class MainActivity : AppCompatActivity() {
         val adapter = bluetoothAdapterOrNull() ?: return
 
         scannedByAddress.clear()
+        allFoundByAddress.clear()
         // Seed with already-paired Tronic printers so they always appear.
         try {
             for (d in adapter.bondedDevices.orEmpty()) {
+                val key = d.address.uppercase()
+                allFoundByAddress[key] = d
                 if (looksLikeTronicPrinter(d)) {
-                    scannedByAddress[d.address.uppercase()] = d
+                    scannedByAddress[key] = d
                 }
             }
         } catch (_: SecurityException) {
@@ -242,6 +292,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        // System BT broadcasts must use EXPORTED — NOT_EXPORTED never receives ACTION_FOUND /
+        // DISCOVERY_FINISHED, so the dialog would hang until Cancel.
         val filter = IntentFilter().apply {
             addAction(BluetoothDevice.ACTION_FOUND)
             addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
@@ -250,26 +302,21 @@ class MainActivity : AppCompatActivity() {
             this,
             discoveryReceiver,
             filter,
-            ContextCompat.RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_EXPORTED
         )
 
-        val started = try {
-            adapter.startDiscovery()
-        } catch (_: SecurityException) {
-            false
-        }
-        if (!started) {
-            unregisterDiscoveryReceiver()
-            toast(getString(R.string.toast_scan_failed))
-            return
-        }
+        discoveryStarted = false
+        mainHandler.removeCallbacks(startDiscoveryRunnable)
+        mainHandler.postDelayed(startDiscoveryRunnable, 400)
 
         scanning = true
         scanButton.isEnabled = false
         scanProgressDialog = AlertDialog.Builder(this)
             .setTitle(R.string.dialog_scanning_title)
-            .setMessage(R.string.dialog_scanning_message)
+            .setMessage(scanProgressText())
             .setNegativeButton(android.R.string.cancel) { _, _ ->
+                mainHandler.removeCallbacks(scanTimeoutRunnable)
+                mainHandler.removeCallbacks(startDiscoveryRunnable)
                 stopDiscoveryQuietly()
                 finishPrinterScan(cancelled = true)
             }
@@ -277,9 +324,23 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun updateScanProgressMessage() {
+        scanProgressDialog?.setMessage(scanProgressText())
+    }
+
+    private fun scanProgressText(): String {
+        val tronic = scannedByAddress.size
+        val all = allFoundByAddress.size
+        return getString(R.string.dialog_scanning_message) +
+            "\n\n" + getString(R.string.dialog_scanning_counts, tronic, all)
+    }
+
     private fun finishPrinterScan(cancelled: Boolean = false) {
         if (!scanning && scanProgressDialog == null) return
+        mainHandler.removeCallbacks(scanTimeoutRunnable)
+        mainHandler.removeCallbacks(startDiscoveryRunnable)
         scanning = false
+        discoveryStarted = false
         scanButton.isEnabled = true
         unregisterDiscoveryReceiver()
         dismissScanProgress()
@@ -289,11 +350,19 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val devices = scannedByAddress.values.toList().sortedWith(
+        var devices = scannedByAddress.values.toList().sortedWith(
             compareByDescending<BluetoothDevice> {
                 (it.name ?: "").contains("Mini Pocket", ignoreCase = true)
             }.thenBy { it.name ?: it.address }
         )
+        var titleRes = R.string.dialog_scan_results_title
+
+        if (devices.isEmpty() && allFoundByAddress.isNotEmpty()) {
+            // No name/MAC heuristic match — still let the user pick from what was seen.
+            devices = allFoundByAddress.values.toList().sortedBy { it.name ?: it.address }
+            titleRes = R.string.dialog_scan_all_title
+        }
+
         if (devices.isEmpty()) {
             AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_scan_empty_title)
@@ -305,7 +374,7 @@ class MainActivity : AppCompatActivity() {
 
         val items = devices.map { formatDeviceLine(it) }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle(R.string.dialog_scan_results_title)
+            .setTitle(titleRes)
             .setItems(items) { _, which ->
                 val chosen = devices[which]
                 manualAddressEdit.setText(chosen.address.uppercase())
@@ -380,5 +449,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        private const val SCAN_TIMEOUT_MS = 14_000L
     }
 }
