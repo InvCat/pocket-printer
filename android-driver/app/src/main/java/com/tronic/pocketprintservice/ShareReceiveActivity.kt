@@ -183,7 +183,14 @@ class ShareReceiveActivity : AppCompatActivity() {
                     if (isWebLinkShare(text)) {
                         throw IllegalArgumentException(getString(R.string.share_error_url_only))
                     }
-                    return listOf(TronicBluetoothPrinter.renderTextToBitmap(text))
+                    return listOf(
+                        run {
+                            val rendered = TronicBluetoothPrinter.renderTextToBitmap(text)
+                            val mono = TronicBluetoothPrinter.preparePrintBitmap(rendered)
+                            if (mono !== rendered) rendered.recycle()
+                            mono
+                        }
+                    )
                 }
                 return emptyList()
             }
@@ -240,24 +247,31 @@ class ShareReceiveActivity : AppCompatActivity() {
             mime.equals("application/pdf", ignoreCase = true) ||
                 (uri.toString().lowercase().endsWith(".pdf")) -> {
                 contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    TronicBluetoothPrinter.renderPdfToBitmaps(pfd)
+                    TronicBluetoothPrinter.renderPdfToBitmaps(pfd).map { page ->
+                        val mono = TronicBluetoothPrinter.preparePrintBitmap(page)
+                        if (mono !== page) page.recycle()
+                        mono
+                    }
                 } ?: emptyList()
             }
-            mime.startsWith("image/") || mimeHint.startsWith("image/") -> {
+                    mime.startsWith("image/") || mimeHint.startsWith("image/") -> {
                 contentResolver.openInputStream(uri)?.use { input ->
                     val decoded = BitmapFactory.decodeStream(input)
                         ?: throw IllegalArgumentException("Could not decode image.")
-                    val fitted = TronicBluetoothPrinter.fitBitmapToPrintWidth(decoded)
-                    if (fitted !== decoded) {
+                    val mono = TronicBluetoothPrinter.preparePrintBitmap(decoded)
+                    if (mono !== decoded) {
                         decoded.recycle()
                     }
-                    listOf(fitted)
+                    listOf(mono)
                 } ?: emptyList()
             }
             mime.startsWith("text/") -> {
                 contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
                     val text = reader.readText()
-                    listOf(TronicBluetoothPrinter.renderTextToBitmap(text))
+                    val rendered = TronicBluetoothPrinter.renderTextToBitmap(text)
+                    val mono = TronicBluetoothPrinter.preparePrintBitmap(rendered)
+                    if (mono !== rendered) rendered.recycle()
+                    listOf(mono)
                 } ?: emptyList()
             }
             else -> {
@@ -266,11 +280,17 @@ class ShareReceiveActivity : AppCompatActivity() {
                     val bytes = input.readBytes()
                     val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     if (decoded != null) {
-                        return listOf(TronicBluetoothPrinter.fitBitmapToPrintWidth(decoded))
+                        val mono = TronicBluetoothPrinter.preparePrintBitmap(decoded)
+                        if (mono !== decoded) decoded.recycle()
+                        return listOf(mono)
                     }
                 }
                 contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    return TronicBluetoothPrinter.renderPdfToBitmaps(pfd)
+                    return TronicBluetoothPrinter.renderPdfToBitmaps(pfd).map { page ->
+                        val mono = TronicBluetoothPrinter.preparePrintBitmap(page)
+                        if (mono !== page) page.recycle()
+                        mono
+                    }
                 }
                 emptyList()
             }

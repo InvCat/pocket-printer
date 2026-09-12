@@ -84,7 +84,7 @@ From any app that supports Android print:
 
 ## Notes
 
-- MVP uses monochrome thresholding (no advanced dithering yet).
+- MVP uses Floyd–Steinberg dithering to 1-bit mono (preview matches print).
 - Pairing-free mode is best-effort (depends on the phone’s Bluetooth stack).
 - Android 12+ will prompt for Bluetooth permission when you print / pick a device.
 - Classic SPP is the reliable path; only one client should use the printer at a time

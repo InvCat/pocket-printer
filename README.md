@@ -142,7 +142,7 @@ If you also grabbed one of these from Lidl (or a rebranded twin with the same Lu
 
 ## Status
 
-Working MVP. Image printing uses dithering in the Python / Pi gateway path; the Android app still uses simple thresholding. Android supports both the system Print dialog and a Share-sheet target with preview. Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but Classic SPP is the reliable path.
+Working MVP. Image printing uses Floyd–Steinberg dithering on both the Python / Pi gateway path and the Android app (share preview is 1-bit WYSIWYG). Android supports both the system Print dialog and a Share-sheet target with preview. Pairing-free Bluetooth is experimental and depends on the phone’s stack. BLE GATT is advertised by the device but Classic SPP is the reliable path.
 
 ---
 

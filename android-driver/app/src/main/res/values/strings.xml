@@ -12,7 +12,7 @@
     <string name="share_target_label">Tronic Pocket Printer</string>
     <string name="share_title">Print preview</string>
     <string name="share_preview_cd">Print preview at 384 px width</string>
-    <string name="share_hint">Preview is scaled to the 48 mm / 384 px print width (as sent to the printer).</string>
+    <string name="share_hint">Preview is 1-bit Floyd–Steinberg dither at 384 px (as sent to the printer).</string>
     <string name="share_print">Print</string>
     <string name="share_open_setup">Open printer setup</string>
     <string name="share_status_loading">Loading shared content…</string>

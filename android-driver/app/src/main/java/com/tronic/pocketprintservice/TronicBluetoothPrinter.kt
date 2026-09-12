@@ -110,6 +110,72 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
             return Bitmap.createScaledBitmap(src, PRINT_WIDTH, targetHeight, true)
         }
 
+        /**
+         * Scale to 384 px width and Floyd–Steinberg dither to pure black/white
+         * (same approach as [tronic_printer.py] `Image.convert("1")`).
+         * Preview and print should both use this so WYSIWYG matches the head.
+         */
+        fun preparePrintBitmap(source: Bitmap): Bitmap {
+            val fitted = fitBitmapToPrintWidth(source)
+            val mono = floydSteinbergMono(fitted)
+            if (fitted !== source && fitted !== mono) {
+                fitted.recycle()
+            }
+            return mono
+        }
+
+        /** Floyd–Steinberg error diffusion → ARGB black / white. */
+        fun floydSteinbergMono(source: Bitmap): Bitmap {
+            val src = if (source.config == Bitmap.Config.ARGB_8888) {
+                source
+            } else {
+                source.copy(Bitmap.Config.ARGB_8888, false)
+                    ?: throw IOException("Could not convert bitmap to ARGB_8888.")
+            }
+            val width = src.width
+            val height = src.height
+            val pixels = IntArray(width * height)
+            src.getPixels(pixels, 0, width, 0, 0, width, height)
+
+            val gray = FloatArray(width * height)
+            for (i in pixels.indices) {
+                val c = pixels[i]
+                // Transparent / near-transparent → paper white
+                if (Color.alpha(c) < 128) {
+                    gray[i] = 255f
+                } else {
+                    gray[i] = Color.red(c) * 0.299f + Color.green(c) * 0.587f + Color.blue(c) * 0.114f
+                }
+            }
+
+            val out = IntArray(width * height)
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    val i = y * width + x
+                    val old = gray[i].coerceIn(0f, 255f)
+                    val newVal = if (old < 128f) 0f else 255f
+                    out[i] = if (newVal < 128f) Color.BLACK else Color.WHITE
+                    val err = old - newVal
+                    if (x + 1 < width) {
+                        gray[i + 1] += err * 7f / 16f
+                    }
+                    if (y + 1 < height) {
+                        if (x > 0) {
+                            gray[i + width - 1] += err * 3f / 16f
+                        }
+                        gray[i + width] += err * 5f / 16f
+                        if (x + 1 < width) {
+                            gray[i + width + 1] += err * 1f / 16f
+                        }
+                    }
+                }
+            }
+
+            val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            result.setPixels(out, 0, width, 0, 0, width, height)
+            return result
+        }
+
         fun renderTextToBitmap(text: String, fontSizePx: Float = 28f): Bitmap {
             val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.BLACK
@@ -206,7 +272,7 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
         chunks += CMD_ENABLE
         chunks += CMD_WAKEUP
         for (raw in bitmaps) {
-            val bitmap = fitBitmapToPrintWidth(raw)
+            val bitmap = preparePrintBitmap(raw)
             val raster = bitmapToRaster(bitmap)
             chunks += rasterBlockChunks(raster, bitmap.height)
             chunks += CMD_FEED
@@ -276,8 +342,9 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
                     val r = Color.red(color)
                     val g = Color.green(color)
                     val b = Color.blue(color)
+                    // Expect preparePrintBitmap() output (0/255); 128 threshold is safe either way.
                     val luma = (r * 299 + g * 587 + b * 114) / 1000
-                    if (luma < 160) {
+                    if (luma < 128) {
                         packed = packed or (0x80 shr bit)
                     }
                 }
