@@ -59,22 +59,68 @@ python tronic_printer.py image note.png --address 55:55:xx:xx:xx:xx
 Build locally (Android Studio or the no-Studio scripts), or grab the APK from GitHub Actions (`Build Android APK` → artifact). Setup notes are in [`android-driver/README.md`](android-driver/README.md).
 
 ### 5. Raspberry Pi network gateway (CUPS / IPP)
-[`rpi-gateway/`](rpi-gateway/) — run the printer as a **shared network printer** on a Raspberry Pi. Windows prints via IPP; the Pi is the real A2Y driver (Bluetooth/USB).
+[`rpi-gateway/`](rpi-gateway/) — CUPS/IPP (+ optional TCP `:9100`) so the Tronic shows up as a normal LAN printer. The Pi holds Bluetooth (or USB-C) to the device; clients only talk to the Pi. Full reference: [`rpi-gateway/README.md`](rpi-gateway/README.md).
 
-**Recommended Windows side:** driver **MS Publisher Imagesetter** (not IPP Class Driver), paper **Tronic 48×80 mm**, colour **off**, and **no** direct Windows↔printer Bluetooth (SPP is single-client — the Pi must own the link).
+---
+
+## Print from Windows (Raspberry Pi gateway)
+
+No custom Windows `.inf` / WDK driver. The **real A2Y driver runs on the Pi**; Windows only composes the page and sends it over the network.
+
+```text
+Windows app (Notepad, Word, Photos…)
+        │  MS Publisher Imagesetter  →  48×80 mm page
+        │  IPP  http://<pi-ip>:631/printers/TronicPocket
+        ▼
+Raspberry Pi  (CUPS queue TronicPocket + rpi-gateway backend)
+        │  384 px @ 203 dpi, dither, tear-off feed, SPP pacing
+        │  Classic Bluetooth (or USB-C)
+        ▼
+Tronic Mini Pocket Printer (A2Y)
+```
+
+### 1) Install on the Pi
 
 ```bash
 cd rpi-gateway
 sudo ./install.sh --address 55:55:xx:xx:xx:xx
 ```
 
-On Windows (Admin PowerShell), from `rpi-gateway/`:
+Pair the printer once with `bluetoothctl` (`pair` / `trust`). Config: `/etc/tronic-pocket-printer.conf`.
+
+### 2) Add the printer on Windows
+
+Admin PowerShell, from a checkout of `rpi-gateway/` (replace with your Pi’s LAN IP):
 
 ```powershell
-.\add-printer-windows.ps1 -PrinterHost <pi-ip>
+Set-ExecutionPolicy -Scope Process Bypass
+.\add-printer-windows.ps1 -PrinterHost 192.168.xxx.xxx
 ```
 
-Full setup, tear-off margin, WYSIWYG 48 mm behaviour, and photo banding / raster pacing: [`rpi-gateway/README.md`](rpi-gateway/README.md).
+Or already added with the wrong driver:
+
+```powershell
+.\fix-windows-paper.ps1
+```
+
+### 3) Windows settings that matter
+
+| Setting | Use this | Avoid |
+|---|---|---|
+| Driver | **MS Publisher Imagesetter** | Microsoft IPP Class Driver (no custom 48 mm) |
+| Paper | **Tronic 48×80 mm** | A4 / Letter |
+| Color | **Off** (greyscale / B&W) | Colour (hardware is mono) |
+| Bluetooth to the Tronic | **Disconnected / disabled** on Windows | Keeping Windows paired on SPP — blocks the Pi |
+
+Close Notepad/Word after changing paper defaults, then reopen.
+
+### Why Imagesetter (not IPP Class Driver)?
+
+- **IPP** = the network pipe to the Pi.
+- **IPP Class Driver** = Microsoft’s generic IPP client; paper list is basically A4/Letter only → tiny text / long blank rolls.
+- **MS Publisher Imagesetter** = inbox composer that honors a Windows **48 mm** form; the Pi then prints WYSIWYG at true size.
+
+More detail (tear-off margin, photo banding / raster buffer, troubleshooting): [`rpi-gateway/README.md`](rpi-gateway/README.md).
 
 ---
 
