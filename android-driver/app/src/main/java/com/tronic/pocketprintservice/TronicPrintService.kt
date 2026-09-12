@@ -93,11 +93,18 @@ private class TronicDiscoverySession(
         }
         val status = if (hasTarget) PrinterInfo.STATUS_IDLE else PrinterInfo.STATUS_UNAVAILABLE
 
+        // Physical printable width is 48 mm (1890 mils). Chrome/WebView often still
+        // apply ~0.5" default margins even when the printer advertises NO_MARGINS,
+        // which leaves only ~22 mm for layout and wraps text character-by-character.
+        // Inflate the declared page so the *content* box lands near 48 mm; we crop
+        // leftover white when rasterizing the PDF.
+        val contentWidthMils = 1890 // 48 mm
+        val browserMarginMils = 500 // 0.5 inch per side (typical Chrome "Default")
         val media48 = PrintAttributes.MediaSize(
             "TRONIC_48MM",
             "48mm Roll",
-            1890,
-            7874
+            contentWidthMils + 2 * browserMarginMils,
+            7874 // ~200 mm page slice on the roll
         )
         val caps = PrinterCapabilitiesInfo.Builder(printerId)
             .addMediaSize(media48, true)

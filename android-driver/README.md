@@ -80,8 +80,11 @@ From any app that supports Android print:
 
 1. Choose **Print** (not only Share)
 2. Select **Tronic Mini Pocket Printer**
-3. Print
+3. Paper size: **48mm Roll**
+4. Open the extra options (chevron) and set **Margins → None** if available (Chrome’s “Default” margins are huge on 48 mm)
+5. Print
 
+The driver also crops leftover white PDF margins and scales content to 384 px.
 ## Notes
 
 - MVP uses Floyd–Steinberg dithering to 1-bit mono (preview matches print).

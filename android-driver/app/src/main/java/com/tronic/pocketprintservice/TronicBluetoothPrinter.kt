@@ -90,7 +90,7 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
                 }
                 for (pageIndex in 0 until renderer.pageCount) {
                     renderer.openPage(pageIndex).use { page ->
-                        pages += renderPageToWidth(page, PRINT_WIDTH)
+                        pages += renderPdfPageForPrint(page)
                     }
                 }
             }
@@ -108,6 +108,59 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
             }
             val targetHeight = max(1, (src.height.toFloat() / src.width.toFloat() * PRINT_WIDTH).roundToInt())
             return Bitmap.createScaledBitmap(src, PRINT_WIDTH, targetHeight, true)
+        }
+
+        /**
+         * Crop near-white margins (Chrome/web print often pads the 48 mm page).
+         * Returns [source] unchanged if there is nothing to crop.
+         */
+        fun trimWhitespace(
+            source: Bitmap,
+            threshold: Int = 245,
+            marginPx: Int = 4,
+            marginBottomPx: Int = 8
+        ): Bitmap {
+            val width = source.width
+            val height = source.height
+            if (width < 8 || height < 8) {
+                return source
+            }
+            val pixels = IntArray(width * height)
+            source.getPixels(pixels, 0, width, 0, 0, width, height)
+
+            var minX = width
+            var minY = height
+            var maxX = -1
+            var maxY = -1
+            for (y in 0 until height) {
+                val row = y * width
+                for (x in 0 until width) {
+                    val c = pixels[row + x]
+                    val luma = if (Color.alpha(c) < 128) {
+                        255
+                    } else {
+                        (Color.red(c) * 299 + Color.green(c) * 587 + Color.blue(c) * 114) / 1000
+                    }
+                    if (luma < threshold) {
+                        if (x < minX) minX = x
+                        if (x > maxX) maxX = x
+                        if (y < minY) minY = y
+                        if (y > maxY) maxY = y
+                    }
+                }
+            }
+            if (maxX < 0 || maxY < 0) {
+                val stubH = minOf(height, max(32, marginPx + marginBottomPx + 8))
+                return Bitmap.createBitmap(source, 0, 0, width, stubH)
+            }
+            val left = max(0, minX - marginPx)
+            val top = max(0, minY - marginPx)
+            val right = minOf(width, maxX + 1 + marginPx)
+            val bottom = minOf(height, maxY + 1 + marginBottomPx)
+            if (left == 0 && top == 0 && right == width && bottom == height) {
+                return source
+            }
+            return Bitmap.createBitmap(source, left, top, right - left, bottom - top)
         }
 
         /** Rotate clockwise by 90/180/270°. Returns [source] if degrees is a multiple of 360. */
@@ -235,19 +288,34 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
             return out
         }
 
-        private fun renderPageToWidth(page: PdfRenderer.Page, targetWidth: Int): Bitmap {
-            val srcWidth = max(1, page.width)
-            val srcHeight = max(1, page.height)
-            val targetHeight = max(1, (srcHeight.toFloat() / srcWidth.toFloat() * targetWidth).roundToInt())
+        /**
+         * Rasterize a PDF page at ~203 dpi, crop browser/print margins, fit to 384 px.
+         */
+        private fun renderPdfPageForPrint(page: PdfRenderer.Page): Bitmap {
+            val ptW = max(1, page.width)
+            val ptH = max(1, page.height)
+            // PdfRenderer page size is in points (1/72"); thermal head is 203 dpi.
+            val scale = 203f / 72f
+            val renderW = (ptW * scale).roundToInt().coerceIn(PRINT_WIDTH, 2400)
+            val renderH = max(1, (ptH.toFloat() / ptW.toFloat() * renderW).roundToInt().coerceAtMost(20000))
 
-            val bitmap = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
+            val rendered = Bitmap.createBitmap(renderW, renderH, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(rendered)
             canvas.drawColor(Color.WHITE)
             val matrix = Matrix().apply {
-                setScale(targetWidth.toFloat() / srcWidth.toFloat(), targetHeight.toFloat() / srcHeight.toFloat())
+                setScale(renderW.toFloat() / ptW.toFloat(), renderH.toFloat() / ptH.toFloat())
             }
-            page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-            return bitmap
+            page.render(rendered, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+
+            val trimmed = trimWhitespace(rendered)
+            if (trimmed !== rendered) {
+                rendered.recycle()
+            }
+            val fitted = fitBitmapToPrintWidth(trimmed)
+            if (fitted !== trimmed) {
+                trimmed.recycle()
+            }
+            return fitted
         }
     }
 
