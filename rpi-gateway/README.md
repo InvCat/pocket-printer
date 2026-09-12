@@ -103,12 +103,12 @@ From this folder on the Windows PC (adjust IP):
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-.\add-printer-windows.ps1 -PrinterHost 192.168.145.211
+.\add-printer-windows.ps1 -PrinterHost 192.168.xxx.xxx
 ```
 
 That script:
 
-1. Adds `http://192.168.145.211:631/printers/TronicPocket`
+1. Adds `http://192.168.xxx.xxx:631/printers/TronicPocket`
 2. Sets the Windows driver to **MS Publisher Imagesetter**
 3. Registers form **Tronic 48x80 mm** and aims to set it as default
 
@@ -135,7 +135,7 @@ be **Tronic 48x80 mm**, not A4.
 Set greyscale (Admin PowerShell):
 
 ```powershell
-Set-PrintConfiguration -PrinterName '\\http://192.168.145.211:631\TronicPocket' -Color $false
+Set-PrintConfiguration -PrinterName '\\http://192.168.xxx.xxx:631\TronicPocket' -Color $false
 ```
 
 ### Critical: do not let Windows keep Bluetooth to the printer
@@ -154,7 +154,7 @@ and CUPS jobs fail with no paper out.
 2. Shared printer by name:
 
 ```text
-http://192.168.145.211:631/printers/TronicPocket
+http://192.168.xxx.xxx:631/printers/TronicPocket
 ```
 
 3. **Printer properties → Advanced → New Driver → Microsoft → MS Publisher Imagesetter**

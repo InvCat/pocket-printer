@@ -7,10 +7,10 @@
 # Usage (Administrator PowerShell):
 #   Set-ExecutionPolicy -Scope Process Bypass
 #   .\add-printer-windows.ps1
-#   .\add-printer-windows.ps1 -PrinterHost 192.168.145.211
+#   .\add-printer-windows.ps1 -PrinterHost 192.168.xxx.xxx
 
 param(
-    [string]$PrinterHost = "192.168.145.211",
+    [string]$PrinterHost = "192.168.xxx.xxx",
     [string]$QueueName = "TronicPocket",
     [string]$PrinterName = "Tronic Mini Pocket Printer",
     [string]$FormName = "Tronic 48x80 mm",
