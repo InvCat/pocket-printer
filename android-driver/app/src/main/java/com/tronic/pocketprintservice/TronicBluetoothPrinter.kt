@@ -57,7 +57,12 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
         }
 
         val device = adapter.getRemoteDevice(address)
-        adapter.cancelDiscovery()
+        // Best-effort: cancelDiscovery needs BLUETOOTH_SCAN on API 31+.
+        try {
+            adapter.cancelDiscovery()
+        } catch (_: SecurityException) {
+            // Continue — connect still works without cancelling discovery.
+        }
         val chunks = buildPrintChunksFromBitmaps(bitmaps)
 
         val sppErr = runCatching { sendViaSpp(device, chunks) }.exceptionOrNull()
@@ -168,11 +173,11 @@ class TronicBluetoothPrinter(private val context: Context, private val address: 
 
     private fun ensureConnectPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val granted = ContextCompat.checkSelfPermission(
+            val connect = ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.BLUETOOTH_CONNECT
             ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
+            if (!connect) {
                 throw SecurityException("BLUETOOTH_CONNECT permission is missing.")
             }
         }

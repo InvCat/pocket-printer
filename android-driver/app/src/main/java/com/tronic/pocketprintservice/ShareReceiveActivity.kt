@@ -30,8 +30,9 @@ class ShareReceiveActivity : AppCompatActivity() {
     private val worker = Executors.newSingleThreadExecutor()
 
     private val btPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val connectOk = result[Manifest.permission.BLUETOOTH_CONNECT] != false
+            if (connectOk || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 startPrint()
             } else {
                 toast("Bluetooth permission denied.")
@@ -111,12 +112,19 @@ class ShareReceiveActivity : AppCompatActivity() {
 
     private fun ensureBtAndPrint() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val granted = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            val need = mutableListOf<String>()
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                need += Manifest.permission.BLUETOOTH_CONNECT
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                need += Manifest.permission.BLUETOOTH_SCAN
+            }
+            if (need.isNotEmpty()) {
+                btPermissionLauncher.launch(need.toTypedArray())
                 return
             }
         }

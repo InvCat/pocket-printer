@@ -20,8 +20,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var manualAddressEdit: EditText
 
     private val btPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            val connectOk = result[Manifest.permission.BLUETOOTH_CONNECT] != false
+            if (connectOk || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
                 showPairedDevicesDialog()
             } else {
                 toast("Bluetooth permission denied.")
@@ -83,12 +84,19 @@ class MainActivity : AppCompatActivity() {
 
     private fun ensureBluetoothPermissionAndPick() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val granted = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.BLUETOOTH_CONNECT
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                btPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            val need = mutableListOf<String>()
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                need += Manifest.permission.BLUETOOTH_CONNECT
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                need += Manifest.permission.BLUETOOTH_SCAN
+            }
+            if (need.isNotEmpty()) {
+                btPermissionLauncher.launch(need.toTypedArray())
                 return
             }
         }
